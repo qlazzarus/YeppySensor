@@ -21,18 +21,22 @@ const int DUST_PIN = 8;
 const int BUZZER_PIN = 5;
 const int MOTOR_PIN = 6;
 
+// 온습도 센서
+float humidity = 0;
+float temperature = 0;
+
 // dust sensor
 unsigned long duration;
-unsigned long startTime;
+unsigned long lastCalcTime;
+unsigned long mainCalcTime;
 // 먼지센서 샘플링 시간 - 2sec
 unsigned long sampleTime = 2000;
 unsigned long lowPulseOccupancy = 0;
-float ratio = 0;
+float percent = 0;
 float concentration = 0;
 float dustDensity = 0;
-float dustState = 0;
-boolean dustCalculateRun = false;
-boolean dustCalculateDone = false;
+boolean mainCheck = false;
+unsigned int dustState = 0;
 unsigned int buzzerCount = 0;
 
 // initial pin
@@ -54,33 +58,33 @@ void initialLcd() {
   lcd.createChar(4, threeImage);
 
   lcd.home();
-  lcd.print("EJLOVE Loading..");
+  lcd.print("EJLOVE!!");
 }
 
-// print lcd
-void printLcd() {
-  lcd.clear();
-}
 
-/* 신뢰할 수 있는 먼지밀도 계산하기
-   대부분의 아날로그센서의 경우 값이 튀는 현상이 있는데, 
-   이것을 보정하기 위해 여러번 값을 누적한 후, 
-   평균값을 내어 신뢰할 수 있는 먼지밀도를 구합니다.
+/** 
+ * 신뢰할 수 있는 먼지밀도 계산하기
+ * 대부분의 아날로그센서의 경우 값이 튀는 현상이 있는데,
+ * 이것을 보정하기 위해 여러번 값을 누적한 후, 
+ * 평균값을 내어 신뢰할 수 있는 먼지밀도를 구합니다.
 */
 void calcDustDensity() {
   duration = pulseIn(DUST_PIN, LOW);
   lowPulseOccupancy = lowPulseOccupancy + duration;
 
-  if ((millis() - startTime) > sampleTime) {
-    dustCalculateRun = false;
-    dustCalculateDone = true;
+  // 먼지센서 샘플링 시간 - 2sec 동안 duration / lowPulseOccupancy 로 확인
+  if ((millis() - mainCalcTime) > sampleTime) {
+    lastCalcTime = mainCalcTime;
+    
+    // percent
+    percent = lowPulseOccupancy / (sampleTime * 10.0);
+    // using spec sheet curve
+    concentration = 1.1 * pow(percent, 3) - 3.8 * pow(percent, 2) + 520 * percent + 0.62;
 
-    ratio = lowPulseOccupancy / (sampleTime * 10.0);
-    concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) * 520 * ratio + 0.62;
     dustDensity = concentration * 100 / 1000;
     lowPulseOccupancy = 0;
+
     dustState = 0;
-    
     if (dustDensity > 150) {
       dustState = 3;
     } else if (dustDensity > 80) {
@@ -88,30 +92,73 @@ void calcDustDensity() {
     } else if (dustDensity > 30) {
       dustState = 1;
     }
+    
+    mainCalcTime = millis();
   }
+}
+
+
+
+/**
+ * 습도,온도 계산
+ * DHT온습도센서를 이용해서 온도와 습도를 계산합니다.
+*/
+void calcHumidityAndTemperature() {
+  // @TODO
+}
+
+// print lcd
+void printLcd() {
+  //lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(dustDensity);
+  lcd.write(3);
+  lcd.print("g/m");
+  lcd.write(4);
+  lcd.setCursor(10, 0);
+
+  switch (dustState) {
+    case 1:
+      lcd.print(" (o_o)");
+      break;
+    case 2:
+      lcd.print(" (T.T)");
+      break;
+    case 3:
+      lcd.print(" (ToT)");
+      break;      
+    default:
+      lcd.print(" (^_^)");
+      break;      
+  }
+
+  lcd.setCursor(0, 1);
+  lcd.write(0);
+  lcd.print(" ");
+  lcd.print(humidity);
+  lcd.print("% ");
+  lcd.write(1);
+  lcd.print(" ");
+  lcd.print(temperature);
+  lcd.write(2);
+  lcd.print("C ");
+}
+
+void debugLcd() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(lowPulseOccupancy);
 }
 
 void setup() {
   initialPin();
   initialLcd();
-  startTime = millis();
+  mainCalcTime = millis();
 }
 
 void loop() {
-  // @TODO
-  // 1. 미세먼지 측정
-  // 2. 이후 LCD 표기 갱신
-  // 3. 특정 수치가 되면 팬 동작 (동작확인이 필요)
-  // printLcd();
-  /*
-  if (dustCalculateRun == true) {
-    
-  } else {
-    // @TODO buzzer && fan control
-
-    // 먼지센서 초기화
-    dustCalculateRun = true;
-    startTime = millis();
-  }
-  */
+  // 미세먼지 센서가 메인이며, 이후 온습도센서 + 부저 + 팬 + LCD 출력
+  calcDustDensity();
+  calcHumidityAndTemperature();
+  printLcd();
 }
