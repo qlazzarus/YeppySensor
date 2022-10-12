@@ -21,6 +21,8 @@ const int DUST_PIN = 8;
 const int BUZZER_PIN = 5;
 const int MOTOR_PIN = 6;
 
+const int COUNT_NUM = 10;
+
 // 온습도 센서
 float humidity = 0;
 float temperature = 0;
@@ -75,7 +77,7 @@ void initialLcd() {
    이것을 보정하기 위해 여러번 값을 누적한 후,
    평균값을 내어 신뢰할 수 있는 먼지밀도를 구합니다.
 */
-void calcDustDensity() {
+void calcSensor() {
   duration = pulseIn(DUST_PIN, LOW);
   lowPulseOccupancy += duration;
 
@@ -83,9 +85,9 @@ void calcDustDensity() {
   if ((millis() - mainCalcTime) > sampleTime) {
     ratio = lowPulseOccupancy / (sampleTime * 10.0);
     // using spec sheet curve
-    concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio;
+    concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62;
 
-    dustDensity = concentration * 100 / 1000;
+    dustDensity = (concentration * 100) / 13000;
     lowPulseOccupancy = 0.0;
 
     /*
@@ -141,7 +143,7 @@ void setup() {
 }
 
 void loop() {
-  // 미세먼지 센서가 메인이며, 이후 온습도센서 + 부저 + 팬 + LCD 출력
-  calcDustDensity();
+  // 부저 + 팬 + 
+  calcSensor();
   printLcd();
 }
