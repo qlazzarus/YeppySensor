@@ -1,8 +1,5 @@
-// wire 라이브러리
 #include <Wire.h>
-// 액정 라이브러리
 #include <LiquidCrystal_I2C.h>
-// 습도 센서 라이브러
 #include <DHT11.h>
 
 // init lcd
@@ -20,7 +17,7 @@ const int DHT_PIN = 2;
 const int DUST_PIN = 8;
 const int MOTOR_PIN = 5; // relay will be here
 
-// 온습도 센서
+// humidity sensor
 float humidity = 0;
 float temperature = 0;
 
@@ -39,6 +36,7 @@ float dustArray[COUNT_NUM];
 int readIndex = 0;
 float dustTotal = 0;
 float dustAverage = 0;
+boolean dustCycle = false;
 
 
 // initial DHT11
@@ -89,15 +87,16 @@ void calcSensor() {
     concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62;
     dustDensity = (concentration * 100) / 13000;
 
-    // sometimes return 0
-    if (dustDensity > 0) {
+    // sometimes return 0.00
+    if (dustDensity > 0.009) {
       dustTotal -= dustArray[readIndex];
       dustArray[readIndex] = dustDensity;
-      dustTotal += dustArray[readIndex];
+      dustTotal += dustDensity;
       readIndex++;
   
       if (readIndex >= COUNT_NUM) {
         readIndex = 0;
+        dustCycle = true;
       }
   
       dustAverage = dustTotal / COUNT_NUM;
@@ -148,7 +147,7 @@ void setup() {
 
 void loop() {
   calcSensor();
-  if (dustDensity > 0) {
+  if (dustDensity > 0 && dustCycle == true) {
     printLcd();
   }
 }
