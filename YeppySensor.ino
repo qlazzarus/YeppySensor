@@ -18,7 +18,7 @@ byte threeImage[] = {0x18, 0x04, 0x18, 0x04, 0x18, 0x00, 0x00, 0x00};
 // digital pin
 const int DHT_PIN = 2;
 const int DUST_PIN = 8;
-const int BUZZER_PIN = 5; // relay will be here
+const int MOTOR_PIN = 5; // relay will be here
 
 // 온습도 센서
 float humidity = 0;
@@ -52,7 +52,6 @@ void initialSerial() {
 // initial pin
 void initialPin() {
   pinMode(DUST_PIN, INPUT);
-  //pinMode(BUZZER_PIN, INPUT);
   //pinMode(MOTOR_PIN, INPUT);
 }
 
@@ -60,7 +59,6 @@ void initialPin() {
 void initialLcd() {
   lcd.begin();
   lcd.backlight();
-  //lcd.noBacklight();
 
   lcd.createChar(0, humidityImage);
   lcd.createChar(1, temperatureImage);
@@ -87,19 +85,21 @@ void calcSensor() {
     ratio = lowPulseOccupancy / (sampleTime * 10.0);
     // using spec sheet curve
     concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62;
-
     dustDensity = (concentration * 100) / 13000;
 
-    dustTotal -= dustArray[readIndex];
-    dustArray[readIndex] = dustDensity;
-    dustTotal += dustArray[readIndex];
-    readIndex++;
-
-    if (readIndex >= COUNT_NUM) {
-      readIndex = 0;
+    // sometimes return 0
+    if (dustDensity > 0) {
+      dustTotal -= dustArray[readIndex];
+      dustArray[readIndex] = dustDensity;
+      dustTotal += dustArray[readIndex];
+      readIndex++;
+  
+      if (readIndex >= COUNT_NUM) {
+        readIndex = 0;
+      }
+  
+      dustAverage = dustTotal / COUNT_NUM;
     }
-
-    dustAverage = dustTotal / COUNT_NUM;
     
     lowPulseOccupancy = 0.0;
     calcTime = millis();
