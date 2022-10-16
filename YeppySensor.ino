@@ -67,7 +67,9 @@ void initialLcd() {
   lcd.createChar(4, threeImage);
 
   lcd.home();
-  lcd.print("EJLOVE!!");
+  lcd.print("EJLOVE");
+  lcd.setCursor(0, 1);
+  lcd.print("YeppySensor");
 }
 
 void initialAverage() {
@@ -146,5 +148,7 @@ void setup() {
 
 void loop() {
   calcSensor();
-  printLcd();
+  if (dustDensity > 0) {
+    printLcd();
+  }
 }
